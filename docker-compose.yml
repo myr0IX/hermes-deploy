@@ -29,9 +29,19 @@ services:
     env_file:
       - .env
     shm_size: 1g
+    # s6 supervise plusieurs services : 10s (le défaut) peut couper court.
+    stop_grace_period: 30s
+    # Rotation au niveau du service, pour ne pas dépendre du daemon.json de l'hôte.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
           memory: 4G
           cpus: "2.0"
+          # `pids_limit` au niveau du service entre en conflit avec ce bloc.
+          pids: 512
     command: gateway run
