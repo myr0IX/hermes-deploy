@@ -1,17 +1,37 @@
 services:
   hermes:
-    image: nousresearch/hermes-agent:v2026.6.5
+    image: nousresearch/hermes-agent:${HERMES_VERSION:-v2026.9.7}
     container_name: hermes
     restart: unless-stopped
+    # Le conteneur démarre root (s6-overlay), chown le volume, puis bascule sur
+    # l'utilisateur `hermes` via s6-setuidgid : sans SETUID/SETGID il meurt en
+    # boucle. KILL sert à signaler ces process depuis PID 1 au `docker stop`.
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+      - KILL
     security_opt:
       - no-new-privileges:true
     volumes:
       - ./data:/opt/data
       - ${WORKSPACE_PATH:-./workspace}:/workspace:rw
+    # 127.0.0.1 only: published ports bypass ufw (Docker's DNAT is evaluated
+    # before ufw's chains). Reach the dashboard over an SSH tunnel.
     ports:
-      - "127.0.0.1:8642:8642"
+      - "127.0.0.1:9119:9119"
+    environment:
+      - HERMES_DASHBOARD=1
     env_file:
       - .env
+    shm_size: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
     command: gateway run

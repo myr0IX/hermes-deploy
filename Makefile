@@ -1,29 +1,28 @@
-IMAGE := nousresearch/hermes-agent:v2026.6.5
+.PHONY: setup start stop restart ps logs shell update help
 
-.PHONY: setup init start stop logs update shell
+help:
+	@echo "Première fois : setup → éditer .env → start"
+	@echo ""
+	@echo "  setup    crée data/, workspace/ et .env à partir de .env.example"
+	@echo "  start    démarre le conteneur"
+	@echo "  stop     arrête le conteneur"
+	@echo "  restart  stop + start"
+	@echo "  ps       état du conteneur"
+	@echo "  logs     suit les logs"
+	@echo "  shell    shell dans le conteneur (utilisateur hermes)"
+	@echo "  update   git pull + pull de l'image + redémarrage"
 
+# data/ et workspace/ sont créés ici pour rester la propriété de l'utilisateur
+# hôte, et pour que .env soit en place avant le premier `up`.
 setup:
-	@mkdir -p data
+	@mkdir -p data workspace
 	@cp -n .env.example .env 2>/dev/null || true
 	@echo ""
-	@echo "1. Remplis .env avec ton token Telegram et ton user ID"
-	@echo "2. Lance: make init"
-
-init:
-	@echo ""
-	@echo "Scanne ce QR code avec Telegram pour créer ton bot via @BotFather :"
-	@echo ""
-	@python3 -c "import qrcode; qr = qrcode.QRCode(); qr.add_data('https://t.me/botfather'); qr.print_ascii(invert=True)" 2>/dev/null || \
-		(pip3 install qrcode --quiet && python3 -c "import qrcode; qr = qrcode.QRCode(); qr.add_data('https://t.me/botfather'); qr.print_ascii(invert=True)")
-	@echo ""
-	@echo "Dans @BotFather : /newbot → donne un nom → copie le token dans .env"
-	@echo ""
-	@read -p "Appuie sur Entrée quand ton token est dans .env..." _; \
-	docker run -it --rm \
-		-v $(PWD)/data:/opt/data \
-		--env-file .env \
-		$(IMAGE) \
-		gateway setup
+	@echo "1. Crée ton bot sur https://t.me/botfather (/newbot) et copie le token"
+	@echo "2. Récupère ton user ID sur https://t.me/userinfobot"
+	@echo "3. Remplis .env : token, user ID, clé du modèle, identifiants dashboard"
+	@echo "4. Vérifie HERMES_UID/HERMES_GID dans .env (id -u, id -g)"
+	@echo "5. Lance: make start"
 
 start:
 	docker compose up -d
@@ -31,13 +30,19 @@ start:
 stop:
 	docker compose down
 
+restart: stop start
+
+ps:
+	docker compose ps
+
 logs:
 	docker compose logs -f hermes
 
+# -u hermes : en root, tout fichier créé sous /opt/data casse la passerelle.
 shell:
-	docker exec -it hermes bash
+	docker exec -it -u hermes hermes bash
 
-# Pour upgrader : mettre à jour IMAGE ici ET dans docker-compose.yml
 update:
-	docker pull $(IMAGE)
+	git pull --ff-only
+	docker compose pull
 	docker compose up -d
