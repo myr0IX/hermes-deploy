@@ -7,7 +7,7 @@ Tout se passe sur la machine qui héberge le conteneur : on clone ce repo dessus
 ## Prérequis
 
 - Docker et `git` sur la machine
-- Un bot Telegram ([@BotFather](https://t.me/botfather)) et ton user ID ([@userinfobot](https://t.me/userinfobot))
+- Telegram sur ton téléphone
 - Une clé API de modèle (Anthropic, OpenAI ou OpenRouter)
 
 ## Installation
@@ -16,11 +16,18 @@ Tout se passe sur la machine qui héberge le conteneur : on clone ce repo dessus
 git clone https://github.com/myr0IX/hermes-deploy.git
 cd hermes-deploy
 make setup          # crée data/, workspace/ et .env
+make telegram       # crée le bot par QR code, remplit token et user ID dans .env
 ```
 
-Remplir `.env` :
+`make telegram` affiche deux QR codes à scanner avec le téléphone :
 
-- token du bot et ton user ID Telegram
+1. BotFather : envoyer `/newbot`, puis coller dans le terminal le token obtenu (saisie masquée).
+2. Le nouveau bot : appuyer sur « Démarrer ». Ton user ID est détecté à partir de ce message.
+
+Le bot est créé par BotFather sur ton compte : il t'appartient entièrement, sans passer par le service d'onboarding de Nous (dont le bot gestionnaire garderait le droit de relire et de révoquer le token). Pour le relancer sur un bot déjà utilisé par Hermes, faire d'abord `make stop`.
+
+Compléter `.env` :
+
 - **une** clé de modèle
 - les identifiants du dashboard (`HERMES_DASHBOARD_BASIC_AUTH_*`) — sans eux Hermes refuse de démarrer
 - `HERMES_UID` / `HERMES_GID` : vérifier avec `id -u` et `id -g`
@@ -50,16 +57,17 @@ L'API OpenAI-compatible n'est pas exposée. Pour l'activer : `API_SERVER_ENABLED
 
 ## Cibles `make`
 
-| Cible     | Effet                                      |
-| --------- | ------------------------------------------ |
-| `setup`   | crée `data/`, `workspace/`, `.env`         |
-| `start`   | démarre le conteneur                       |
-| `stop`    | arrête le conteneur                        |
-| `restart` | `stop` + `start`                           |
-| `ps`      | état du conteneur                          |
-| `logs`    | suit les logs                              |
-| `shell`   | shell dans le conteneur (utilisateur `hermes`) |
-| `update`  | `git pull` + pull de l'image + redémarrage |
+| Cible      | Effet                                          |
+| ---------- | ---------------------------------------------- |
+| `setup`    | crée `data/`, `workspace/`, `.env`             |
+| `telegram` | crée le bot par QR code, remplit `.env`        |
+| `start`    | démarre le conteneur                           |
+| `stop`     | arrête le conteneur                            |
+| `restart`  | `stop` + `start`                               |
+| `ps`       | état du conteneur                              |
+| `logs`     | suit les logs                                  |
+| `shell`    | shell dans le conteneur (utilisateur `hermes`) |
+| `update`   | `git pull` + pull de l'image + redémarrage     |
 
 ## Choix de déploiement
 
@@ -75,7 +83,7 @@ L'API OpenAI-compatible n'est pas exposée. Pour l'activer : `API_SERVER_ENABLED
 
 ## Pièges
 
-- `TELEGRAM_ALLOWED_USERS` attend l'ID de **ton compte humain**, pas le préfixe numérique du token du bot (`123456789:ABC...` → `123456789` est l'ID du bot, mauvaise valeur). Symptôme : le bot ignore tous les messages.
+- `TELEGRAM_ALLOWED_USERS` attend l'ID de **ton compte humain**, pas le préfixe numérique du token du bot (`123456789:ABC...` → `123456789` est l'ID du bot, mauvaise valeur). Symptôme : le bot ignore tous les messages. `make telegram` le détecte correctement ; à surveiller seulement en remplissant à la main.
 - **Ne pas lancer `hermes gateway setup`** dans le conteneur : l'assistant écrit dans `/opt/data/.env`, qui est rechargé par-dessus l'environnement du compose et masquerait silencieusement ce `.env`. Tout se configure ici.
 - Le dashboard n'est **pas** joignable à `http://<ip-serveur>:9119` — c'est volontaire, passer par le tunnel SSH.
 - `data/` contient les clés API, les sessions et la mémoire de l'agent : gitignored, jamais commité.
