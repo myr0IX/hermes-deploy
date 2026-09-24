@@ -15,29 +15,21 @@ Tout se passe sur la machine qui héberge le conteneur : on clone ce repo dessus
 ```
 git clone https://github.com/myr0IX/hermes-deploy.git
 cd hermes-deploy
-make setup          # crée data/, workspace/ et .env
-make telegram       # crée le bot par QR code, remplit token et user ID dans .env
-```
-
-`make telegram` affiche deux QR codes à scanner avec le téléphone :
-
-1. BotFather : envoyer `/newbot`, puis coller dans le terminal le token obtenu (saisie masquée).
-2. Le nouveau bot : appuyer sur « Démarrer ». Ton user ID est détecté à partir de ce message.
-
-Le bot est créé par BotFather sur ton compte : il t'appartient entièrement, sans passer par le service d'onboarding de Nous (dont le bot gestionnaire garderait le droit de relire et de révoquer le token). Pour le relancer sur un bot déjà utilisé par Hermes, faire d'abord `make stop`.
-
-Compléter `.env` :
-
-- **une** clé de modèle
-- les identifiants du dashboard (`HERMES_DASHBOARD_BASIC_AUTH_*`) — sans eux Hermes refuse de démarrer
-- `HERMES_UID` / `HERMES_GID` : vérifier avec `id -u` et `id -g`
-
-Puis :
-
-```
+make setup          # assistant interactif : remplit .env
 make start
 make logs           # vérifier le démarrage, puis écrire au bot sur Telegram
 ```
+
+`make setup` pose les questions section par section et n'écrit `.env` qu'à la fin (Ctrl-C : rien n'est modifié) :
+
+1. **Modèle** : Anthropic, OpenRouter ou OpenAI. Le lien vers la page de création de clé s'affiche, la clé collée est vérifiée auprès du fournisseur.
+2. **Dashboard** : identifiant et mot de passe locaux (Entrée = mot de passe généré). Pas d'OAuth via Nous Portal.
+3. **Telegram** : deux QR codes à scanner avec le téléphone. BotFather : envoyer `/newbot`, puis coller le token dans le terminal. Le nouveau bot : appuyer sur « Démarrer », ton user ID est détecté à partir de ce message.
+4. **Workspace** : le projet monté dans `/workspace`.
+
+`HERMES_UID`/`HERMES_GID` et le secret de session du dashboard sont posés automatiquement. Relancé, `make setup` propose de refaire chaque section déjà remplie ; ensuite `make restart` si Hermes tourne.
+
+Le bot est créé par BotFather sur ton compte : il t'appartient entièrement, sans passer par le service d'onboarding de Nous (dont le bot gestionnaire garderait le droit de relire et de révoquer le token). Pour refaire la section Telegram sur un bot déjà utilisé par Hermes, faire d'abord `make stop`.
 
 ## Mises à jour
 
@@ -59,8 +51,7 @@ L'API OpenAI-compatible n'est pas exposée. Pour l'activer : `API_SERVER_ENABLED
 
 | Cible      | Effet                                          |
 | ---------- | ---------------------------------------------- |
-| `setup`    | crée `data/`, `workspace/`, `.env`             |
-| `telegram` | crée le bot par QR code, remplit `.env`        |
+| `setup`    | crée `data/`, `workspace/`, remplit `.env`     |
 | `start`    | démarre le conteneur                           |
 | `stop`     | arrête le conteneur                            |
 | `restart`  | `stop` + `start`                               |
@@ -83,7 +74,8 @@ L'API OpenAI-compatible n'est pas exposée. Pour l'activer : `API_SERVER_ENABLED
 
 ## Pièges
 
-- `TELEGRAM_ALLOWED_USERS` attend l'ID de **ton compte humain**, pas le préfixe numérique du token du bot (`123456789:ABC...` → `123456789` est l'ID du bot, mauvaise valeur). Symptôme : le bot ignore tous les messages. `make telegram` le détecte correctement ; à surveiller seulement en remplissant à la main.
+- `TELEGRAM_ALLOWED_USERS` attend l'ID de **ton compte humain**, pas le préfixe numérique du token du bot (`123456789:ABC...` → `123456789` est l'ID du bot, mauvaise valeur). Symptôme : le bot ignore tous les messages. `make setup` le détecte correctement ; à surveiller seulement en remplissant à la main.
+- Compose interprète les `$` des valeurs de `.env` non entourées d'apostrophes : un mot de passe `ab$cd` deviendrait `ab`. `make setup` écrit tout entre apostrophes ; en éditant à la main, faire pareil.
 - **Ne pas lancer `hermes gateway setup`** dans le conteneur : l'assistant écrit dans `/opt/data/.env`, qui est rechargé par-dessus l'environnement du compose et masquerait silencieusement ce `.env`. Tout se configure ici.
 - Le dashboard n'est **pas** joignable à `http://<ip-serveur>:9119` — c'est volontaire, passer par le tunnel SSH.
 - `data/` contient les clés API, les sessions et la mémoire de l'agent : gitignored, jamais commité.

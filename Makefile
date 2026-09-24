@@ -1,10 +1,9 @@
-.PHONY: setup telegram start stop restart ps logs shell update help
+.PHONY: setup start stop restart ps logs shell update help
 
 help:
-	@echo "Première fois : setup → telegram → éditer .env → start"
+	@echo "Première fois : setup → start"
 	@echo ""
-	@echo "  setup    crée data/, workspace/ et .env à partir de .env.example"
-	@echo "  telegram crée le bot Telegram par QR code et remplit .env"
+	@echo "  setup    assistant interactif : crée data/, workspace/ et remplit .env"
 	@echo "  start    démarre le conteneur"
 	@echo "  stop     arrête le conteneur"
 	@echo "  restart  stop + start"
@@ -15,19 +14,12 @@ help:
 
 # data/ et workspace/ sont créés ici pour rester la propriété de l'utilisateur
 # hôte, et pour que .env soit en place avant le premier `up`.
+# The wizard runs inside the Hermes image: python, httpx and qrcode ship with it.
 setup:
 	@mkdir -p data workspace
 	@cp -n .env.example .env 2>/dev/null || true
-	@echo ""
-	@echo "1. Lance: make telegram (QR codes : crée le bot, remplit token et user ID)"
-	@echo "2. Remplis .env : clé du modèle, identifiants dashboard"
-	@echo "3. Vérifie HERMES_UID/HERMES_GID dans .env (id -u, id -g)"
-	@echo "4. Lance: make start"
-
-# Runs inside the Hermes image: python, httpx and qrcode ship with it.
-telegram:
-	docker compose run --rm -u "$$(id -u):$$(id -g)" -v "$(CURDIR):/repo" \
-		--entrypoint /opt/hermes/.venv/bin/python hermes /repo/scripts/telegram_setup.py
+	@docker compose run --rm -u "$$(id -u):$$(id -g)" -v "$(CURDIR):/repo" \
+		--entrypoint /opt/hermes/.venv/bin/python hermes /repo/scripts/configure.py
 
 start:
 	docker compose up -d
